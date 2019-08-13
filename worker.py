@@ -1,11 +1,16 @@
 from faktory import Worker
 import logging
+import workshop
+import mysql.connector
+from environs import Env
 
-
+env = Env()
+env.read_env()
 logging.basicConfig(level=logging.DEBUG)
-def workshop_update(wsid, *arg):
-    logging.error(wsid)
-    return "no"
+def workshop_update(args):
+    wsid = args["wsid"]
+    data = workshop.query(wsid)
+    logging.error(data)
 
 
 w = Worker()
