@@ -1,8 +1,8 @@
 from faktory import Worker
 
 
-def workshop_update(id):
-    print(id)
+def workshop_update(wsid):
+    print(wsid)
 
 
 w = Worker()
