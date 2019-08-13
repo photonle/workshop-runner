@@ -1,4 +1,4 @@
-from faktory import worker
+from faktory import Worker
 
 
 def workshop_update(id):
