@@ -7,3 +7,4 @@ def workshop_update(id):
 
 w = Worker()
 w.register("WorkshopUpdate", workshop_update)
+w.run()
