@@ -62,7 +62,7 @@ def query(file):
     except Exception:
         print(resp.headers)
         print(resp.text)
-        exit()
+        exit(1)
 
     return resp['publishedfiledetails'][0]
 
