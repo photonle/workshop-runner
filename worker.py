@@ -3,8 +3,9 @@ import logging
 
 
 logging.basicConfig(level=logging.DEBUG)
-def workshop_update(wsid):
-    print(wsid)
+def workshop_update(wsid, *arg):
+    logging.error(wsid)
+    return "no"
 
 
 w = Worker()
