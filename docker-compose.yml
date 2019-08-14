@@ -3,6 +3,7 @@ version: "3"
 volumes:
   faktory:
   photon:
+  database:
 
 services:
   queue:
@@ -19,6 +20,8 @@ services:
     restart: always
     env_file:
       - .env
+    volumes:
+      - "database:/var/lib/mysql"
   bot:
     image: registry.git.doctor-internet.dev/photon/discord-bot
     depends_on:
@@ -33,3 +36,10 @@ services:
       - .env
     depends_on:
       - queue
+  adminer:
+      image: adminer
+      restart: always
+      ports:
+        - "127.0.0.1:7421:8080"
+      depends_on:
+        - db
