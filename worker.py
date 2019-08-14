@@ -35,7 +35,7 @@ def workshop_update(args):
     curs = con.cursor(prepared=True)
     curs.execute("SELECT lastup FROM addons WHERE wsid = %s", (wsid,))
     lastup = curs.fetchone()
-    logging.debug(lastup)
+    logging.error(lastup)
 
 
 
