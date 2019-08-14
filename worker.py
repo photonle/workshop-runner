@@ -25,12 +25,12 @@ def workshop_update(args):
     )
 
     curs = con.cursor()
-    curs.execute('''CREATE TABLE IF NOT EXISTS "addons" ( `wsid` NUMERIC, `name` TEXT, `author` NUMERIC, `lastup` NUMERIC, PRIMARY KEY(`wsid`) )''')
-    curs.execute('''CREATE TABLE IF NOT EXISTS "authors" ( `sid` NUMERIC, `sname` TEXT, PRIMARY KEY(`sid`) )''')
-    curs.execute('''CREATE TABLE IF NOT EXISTS "files" ( `path` TEXT, `owner` NUMERIC )''')
-    curs.execute('''CREATE TABLE IF NOT EXISTS "components" ( `cname` TEXT, `owner` NUMERIC )''')
-    curs.execute('''CREATE TABLE IF NOT EXISTS "cars" ( `cname` TEXT, `owner` NUMERIC )''')
-    curs.execute('''CREATE TABLE IF NOT EXISTS "errors" ( `path` TEXT, `error` TEXT, `owner` NUMERIC )''')
+    curs.execute('''CREATE TABLE IF NOT EXISTS "addons" ( `wsid` INTEGER, `name` VARCHAR(500), `author` INTEGER, `lastup` INTEGER, PRIMARY KEY(`wsid`) )''')
+    curs.execute('''CREATE TABLE IF NOT EXISTS "authors" ( `sid` INTEGER, `sname` VARCHAR(500), PRIMARY KEY(`sid`) )''')
+    curs.execute('''CREATE TABLE IF NOT EXISTS "files" ( `path` VARCHAR(500), `owner` INTEGER )''')
+    curs.execute('''CREATE TABLE IF NOT EXISTS "components" ( `cname` VARCHAR(500), `owner` INTEGER )''')
+    curs.execute('''CREATE TABLE IF NOT EXISTS "cars" ( `cname` VARCHAR(500), `owner` INTEGER )''')
+    curs.execute('''CREATE TABLE IF NOT EXISTS "errors" ( `path` VARCHAR(500), `error` VARCHAR(500), `owner` INTEGER )''')
     curs.close()
 
     curs = con.cursor(prepared=True)
