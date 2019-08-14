@@ -8,7 +8,6 @@ import logging
 import workshop
 import mysql.connector
 
-logging.error(env.dump())
 logging.basicConfig(level=logging.DEBUG)
 
 
