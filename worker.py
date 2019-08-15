@@ -80,6 +80,7 @@ def workshop_update(args):
         curs.execute("DELETE FROM components WHERE owner = %s", (wsid,))
         curs.execute("DELETE FROM cars WHERE owner = %s", (wsid,))
         curs.execute("DELETE FROM errors WHERE owner = %s", (wsid,))
+        curs.commit()
         curs.close()
         logging.error("deleted old")
 
@@ -117,6 +118,7 @@ def workshop_update(args):
                             curs.execute("INSERT IGNORE INTO cars VALUES (%s, %s)", (name, wsid,))
                     except subprocess.SubprocessError as err:
                         curs.execute("INSERT IGNORE INTO errors VALUES (%s, %s, %s)", (p, str(err), wsid,))
+        curs.commit()
         curs.close()
         client.queue("WorkshopUpdate", args=(wsid, 'complete', data["title"], author), queue='results')
 
