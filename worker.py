@@ -66,8 +66,8 @@ def workshop_update(args):
         sid = data["creator"]
         author = workshop.author(sid)
         curs = con.cursor(prepared=True)
-        curs.execute("INSERT OR REPLACE INTO authors VALUES (%s, %s)", (sid, author, author,))
-        curs.execute("INSERT OR REPLACE INTO addons VALUES (%s, %s, %s)", (wsid, data["title"], sid,))
+        curs.execute("INSERT INTO authors VALUES (%s, %s) ON DUPLICATE KEY UPDATE SET sname = %s ", (sid, author, author,))
+        curs.execute("INSERT INTO addons VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE SET name = %s, lastup = UNIX_TIMESTAMP(NOW()) ", (wsid, data["title"], sid, data["title"],))
         curs.close()
 
 
