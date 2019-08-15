@@ -24,8 +24,6 @@ services:
       - "database:/var/lib/mysql"
   bot:
     image: registry.git.doctor-internet.dev/photon/discord-bot
-    depends_on:
-      - queue
     env_file:
       - .env
     volumes:
@@ -36,6 +34,7 @@ services:
       - .env
     depends_on:
       - queue
+      - db
     restart: always
   adminer:
       image: adminer
