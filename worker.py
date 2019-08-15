@@ -1,5 +1,5 @@
 import subprocess
-from os import walk
+from os import walk, remove
 
 from environs import Env
 
@@ -67,7 +67,7 @@ def workshop_update(args):
         curs.close()
         logging.error("running")
 
-        gma, ext = "worker.gma", "worker_extract"
+        gma, ext = wsid + ".gma", wsid + "_extract"
         # DL / Extract our addon.
         logging.error("downloading")
         workshop.download(data["file_url"], gma)
@@ -128,7 +128,7 @@ def workshop_update(args):
 
                 con.commit()
                 curs.close()
-        rmtree(gma)
+        remove(gma)
         rmtree(ext)
         client.queue("WorkshopUpdateComplete", args=(wsid, data["title"], author))
 
@@ -168,7 +168,7 @@ def workshop_update_bulk(args):
             client.queue("WorkshopUpdateQueued", args=(data["publishedfileid"], data["title"]))
             client.queue("UpdateWorkshop", args=({"wsid": data["publishedfileid"]},))
 
-w = Worker()
+w = Worker(concurrency=5)
 w.register("UpdateWorkshop", workshop_update)
 w.register("WorkshopUpdateFailed", workshop_results_failed)
 w.register("WorkshopUpdateComplete", workshop_results_success)
