@@ -56,6 +56,8 @@ def workshop_update(args):
         if lastup is not None:
             logging.error(lastup)
             # Don't run and return.:
+
+        logging.error("running")
         curs.close()
 
         # DL / Extract our addon.
@@ -69,6 +71,7 @@ def workshop_update(args):
         curs.execute("INSERT INTO authors VALUES (%s, %s) ON DUPLICATE KEY UPDATE SET sname = %s ", (sid, author, author,))
         curs.execute("INSERT INTO addons VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE SET name = %s, lastup = UNIX_TIMESTAMP(NOW()) ", (wsid, data["title"], sid, data["title"],))
         curs.close()
+        logging.error("inserted addon values")
 
 
         # Delete our old files.
@@ -78,15 +81,19 @@ def workshop_update(args):
         curs.execute("DELETE FROM cars WHERE owner = %s", (wsid,))
         curs.execute("DELETE FROM errors WHERE owner = %s", (wsid,))
         curs.close()
+        logging.error("deleted old")
 
         gma, ext = wsid + ".gma", wsid + "_extract"
         lua = join(ext, "lua")
 
+        logging.error("walking")
+        curs = con.cursor(prepared=True)
         for rt, dirs, files in walk(lua):
             tld = basename(rt)
             for f in files:
                 pf = join(rt, f)
                 p = normpath(normcase(relpath(join(rt, f), ext)))
+                logging.error("checking {}".format(pf))
 
                 curs.execute(
                     "SELECT files.path, addons.name FROM files INNER JOIN addons ON files.owner = addons.wsid WHERE path = %s AND owner != %s",
