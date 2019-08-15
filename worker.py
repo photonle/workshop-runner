@@ -89,7 +89,7 @@ def workshop_update(args):
                 p = normpath(normcase(relpath(join(rt, f), ext)))
 
                 curs.execute(
-                    "SELECT files.path, addons.name FROM files INNER JOIN addons ON files.owner = addons.wsid WHERE path = %s AND owner != ?",
+                    "SELECT files.path, addons.name FROM files INNER JOIN addons ON files.owner = addons.wsid WHERE path = %s AND owner != %s",
                     (p, wsid,))
                 for res in curs:
                     print("\tADON-FILE: {}, '{}'!".format(*res))
