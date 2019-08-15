@@ -23,16 +23,16 @@ def workshop_update(args):
         logging.debug(data)
 
         if data["result"] != 1:
-            client.queue("WorkshopUpdateResult", args=(wsid, 'failure', 'no result'))
+            client.queue("WorkshopUpdateFailed", args=(wsid, 'no result'))
 
         if data["banned"] != 0:
-            client.queue("WorkshopUpdateResult", args=(wsid, 'failure', 'item banned'))
+            client.queue("WorkshopUpdateFailed", args=(wsid, 'item banned'))
 
         if data["creator_app_id"] != 4000 or data["consumer_app_id"] != 4000:
-            client.queue("WorkshopUpdateResult", args=(wsid, 'failure', 'not gmod'))
+            client.queue("WorkshopUpdateFailed", args=(wsid, 'not gmod'))
 
         if not data["filename"].endswith(".gma"):
-            client.queue("WorkshopUpdateResult", args=(wsid, 'failure', 'not gma'))
+            client.queue("WorkshopUpdateFailed", args=(wsid, 'not gma'))
 
         con = mysql.connector.connect(
             user=env.str("MYSQL_USER"),
@@ -122,12 +122,19 @@ def workshop_update(args):
 
                 con.commit()
                 curs.close()
-        client.queue("WorkshopUpdateResult", args=(wsid, 'complete', data["title"], author))
+        client.queue("WorkshopUpdateComplete", args=(wsid, data["title"], author))
 
-def workshop_results(args):
-    logging.error(args)
+def workshop_results_failed(wsid, reason):
+    logging.error(wsid)
+    logging.error(reason)
+
+def workshop_results_success(wsid, title, author):
+    logging.error(wsid)
+    logging.error(title)
+    logging.error(author)
 
 w = Worker()
 w.register("UpdateWorkshop", workshop_update)
-w.register("WorkshopUpdateResult", workshop_results)
+w.register("WorkshopUpdateFailed", workshop_results_failed)
+w.register("WorkshopUpdateComplete", workshop_results_success)
 w.run()
