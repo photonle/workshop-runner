@@ -61,11 +61,12 @@ def workshop_update(args):
         curs.close()
         logging.error("running")
 
+        gma, ext = "worker.gma", "worker_extract"
         # DL / Extract our addon.
         logging.error("downloading")
-        workshop.download(data["file_url"], "worker.gma")
+        workshop.download(data["file_url"], gma)
         logging.error("extracting")
-        fromgma.extract_gma("worker.gma", "worker")
+        fromgma.extract_gma(gma, ext)
 
         logging.error("fetching")
         # And fetch our author.
@@ -85,7 +86,6 @@ def workshop_update(args):
         curs.close()
         logging.error("deleted old")
 
-        gma, ext = wsid + ".gma", wsid + "_extract"
         lua = join(ext, "lua")
 
         logging.error("walking")
