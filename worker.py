@@ -151,8 +151,23 @@ def workshop_results_success(wsid, title, author):
         content="The update for {} ({}) by {} succeded!".format(title, wsid, author)
     ).execute()
 
+def workshop_queued(wsid, title):
+    DiscordWebhook(
+        url=env.str("DISCORD_WEBHOOK"),
+        username="Bot Update Worker",
+        content="[Bulk Update] Queued {} ({}).".format(title, wsid)
+    ).execute()
+
+def workshop_update_bulk():
+    with faktory.connection() as client:
+        for data in workshop.search('[Photon]'):
+            client.queue("WorkshopUpdateQueued", args=(data["publishedfileid"], data["title"]))
+            client.queue("UpdateWorkshop", args=({"wsid": data["publishedfileid"]},))
+
 w = Worker()
 w.register("UpdateWorkshop", workshop_update)
 w.register("WorkshopUpdateFailed", workshop_results_failed)
 w.register("WorkshopUpdateComplete", workshop_results_success)
+w.register("WorkshopUpdateQueued", workshop_queued)
+w.register("UpdateAllWorkshop", workshop_update_bulk)
 w.run()
