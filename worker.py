@@ -1,3 +1,6 @@
+import subprocess
+from os import walk
+
 from environs import Env
 
 env = Env()
@@ -9,6 +12,7 @@ import logging
 import workshop
 import mysql.connector
 from gmad import fromgma
+from os.path import join, relpath, normpath, normcase, basename
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -52,15 +56,80 @@ def workshop_update(args):
         if lastup is not None:
             logging.error(lastup)
             # Don't run and return.:
+        curs.close()
 
         # DL / Extract our addon.
         workshop.download(data["file_url"], "worker.gma")
         fromgma.extract_gma("worker.gma", "worker")
 
+        # And fetch our author.
+        sid = data["creator"]
+        author = workshop.author(sid)
+        curs = con.cursor(prepared=True)
+        curs.execute("INSERT OR REPLACE INTO authors VALUES (%s, %s)", (sid, author, author,))
+        curs.execute("INSERT OR REPLACE INTO addons VALUES (%s, %s, %s)", (wsid, data["title"], sid,))
+        curs.close()
 
 
+        # Delete our old files.
+        curs = con.cursor(prepared=True)
+        curs.execute("DELETE FROM files WHERE owner = %s", (wsid,))
+        curs.execute("DELETE FROM components WHERE owner = %s", (wsid,))
+        curs.execute("DELETE FROM cars WHERE owner = %s", (wsid,))
+        curs.execute("DELETE FROM errors WHERE owner = %s", (wsid,))
+        curs.close()
 
+        gma, ext = wsid + ".gma", wsid + "_extract"
+        lua = join(ext, "lua")
 
+        for rt, dirs, files in walk(lua):
+            tld = basename(rt)
+            for f in files:
+                pf = join(rt, f)
+                p = normpath(normcase(relpath(join(rt, f), ext)))
+
+                curs.execute(
+                    "SELECT files.path, addons.name FROM files INNER JOIN addons ON files.owner = addons.wsid WHERE path = %s AND owner != ?",
+                    (p, wsid,))
+                for res in curs:
+                    print("\tADON-FILE: {}, '{}'!".format(*res))
+                curs.execute("INSERT IGNORE INTO files VALUES (%s, %s)", (p, wsid,))
+
+                if tld == "auto":
+                    try:
+                        comp = subprocess.run('lua components.lua "{}"'.format(pf), capture_output=True, text=True)
+                        if comp.returncode != 0:
+                            raise subprocess.SubprocessError(comp.stderr)
+                        names = [x for x in comp.stdout.strip().split('--##--') if x != '']
+                        for name in names:
+                            curs.execute(
+                                "SELECT components.cname, addons.name FROM components INNER JOIN addons ON components.owner = addons.wsid WHERE cname = %s AND owner != %s",
+                                (name, wsid,))
+                            for res in curs:
+                                print("\tADON-CPMT: '{}', '{}'!".format(*res))
+                            curs.execute("INSERT IGNORE INTO components VALUES (%s, %s)", (name, wsid,))
+                    except subprocess.SubprocessError as err:
+                        print("\tADON-ERR: '{}'!".format(str(err).replace("\n", "\n\t")))
+                        curs.execute("INSERT IGNORE INTO errors VALUES (%s, %s, %s)", (p, str(err), wsid,))
+
+                if tld == "autorun":
+                    try:
+                        comp = subprocess.run('lua cars.lua "{}"'.format(pf), capture_output=True, text=True)
+                        if comp.returncode != 0:
+                            raise subprocess.SubprocessError(comp.stderr)
+                        names = [x for x in comp.stdout.strip().split('--##--') if x != '']
+                        for name in names:
+                            curs.execute(
+                                "SELECT cars.cname, addons.name FROM cars INNER JOIN addons ON cars.owner = addons.wsid WHERE cname = %s AND owner != %s",
+                                (name, wsid,))
+                            for res in curs:
+                                print("\tADON-VEH: '{}', '{}'!".format(*res))
+                            curs.execute("INSERT IGNORE INTO cars VALUES (%s, %s)", (name, wsid,))
+                    except subprocess.SubprocessError as err:
+                        print("\tADON-ERR: '{}'!".format(str(err).replace("\n", "\n\t")))
+                        curs.execute("INSERT IGNORE INTO errors VALUES (%s, %s, %s)", (p, str(err), wsid,))
+        curs.close()
+        client.queue("WorkshopUpdate", args=(wsid, 'complete', data["name"], author), queue='results')
 
 
 
