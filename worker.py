@@ -13,6 +13,7 @@ import workshop
 import mysql.connector
 from gmad import fromgma
 from os.path import join, relpath, normpath, normcase, basename
+from discord_webhook import DiscordWebhook
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -24,15 +25,19 @@ def workshop_update(args):
 
         if data["result"] != 1:
             client.queue("WorkshopUpdateFailed", args=(wsid, 'no result'))
+            return
 
         if data["banned"] != 0:
             client.queue("WorkshopUpdateFailed", args=(wsid, 'item banned'))
+            return
 
         if data["creator_app_id"] != 4000 or data["consumer_app_id"] != 4000:
             client.queue("WorkshopUpdateFailed", args=(wsid, 'not gmod'))
+            return
 
         if not data["filename"].endswith(".gma"):
             client.queue("WorkshopUpdateFailed", args=(wsid, 'not gma'))
+            return
 
         con = mysql.connector.connect(
             user=env.str("MYSQL_USER"),
@@ -125,8 +130,19 @@ def workshop_update(args):
         client.queue("WorkshopUpdateComplete", args=(wsid, data["title"], author))
 
 def workshop_results_failed(wsid, reason):
-    logging.error(wsid)
-    logging.error(reason)
+    reasonStr = "for an unknown reason"
+    if reason == "no result":
+        reasonStr = "because the item could not be found"
+    elif reason == "item banned":
+        reasonStr = "because the item was banned from the steam workshop"
+    elif reason == "not gmod" or reason == "not gma":
+        reasonStr = "because the item wasn't a gmod addon"
+
+    DiscordWebhook(
+        url=env.str("DISCORD_WEBHOOK"),
+        username="Bot Update Worker",
+        content="The update for {} failed {}.".format(wsid, reasonStr)
+    ).execute()
 
 def workshop_results_success(wsid, title, author):
     logging.error(wsid)
