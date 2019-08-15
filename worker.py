@@ -48,6 +48,7 @@ def workshop_update(args):
         curs.execute('''CREATE TABLE IF NOT EXISTS `components` ( `cname` VARCHAR(500), `owner` VARCHAR(32) )''')
         curs.execute('''CREATE TABLE IF NOT EXISTS `cars` ( `cname` VARCHAR(500), `owner` VARCHAR(32) )''')
         curs.execute('''CREATE TABLE IF NOT EXISTS `errors` ( `path` VARCHAR(500), `error` VARCHAR(500), `owner` VARCHAR(32) )''')
+        con.commit()
         curs.close()
 
         curs = con.cursor(prepared=True)
@@ -80,7 +81,7 @@ def workshop_update(args):
         curs.execute("DELETE FROM components WHERE owner = %s", (wsid,))
         curs.execute("DELETE FROM cars WHERE owner = %s", (wsid,))
         curs.execute("DELETE FROM errors WHERE owner = %s", (wsid,))
-        curs.commit()
+        con.commit()
         curs.close()
         logging.error("deleted old")
 
@@ -118,7 +119,7 @@ def workshop_update(args):
                             curs.execute("INSERT IGNORE INTO cars VALUES (%s, %s)", (name, wsid,))
                     except subprocess.SubprocessError as err:
                         curs.execute("INSERT IGNORE INTO errors VALUES (%s, %s, %s)", (p, str(err), wsid,))
-        curs.commit()
+        con.commit()
         curs.close()
         client.queue("WorkshopUpdate", args=(wsid, 'complete', data["title"], author), queue='results')
 
