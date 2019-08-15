@@ -71,11 +71,11 @@ def download(url, fi):
     d = LZMADecompressor()
 
     with get(url) as r:
-        with open("dl.tmp", 'wb') as f:
+        with open(fi + ".tmp", 'wb') as f:
             for chunk in r.iter_content(128):
                 if not d.eof:
                     f.write(d.decompress(chunk))
-    rename("dl.tmp", fi)
+    rename(fi + ".tmp", fi)
 
 
 def author(sid):
