@@ -57,22 +57,22 @@ def workshop_update(args):
             logging.error(lastup)
             # Don't run and return.:
 
-        logging.error("running")
         curs.close()
+        logging.error("running")
 
         # DL / Extract our addon.
+        logging.error("downloading")
         workshop.download(data["file_url"], "worker.gma")
+        logging.error("extracting")
         fromgma.extract_gma("worker.gma", "worker")
 
+        logging.error("fetching")
         # And fetch our author.
         sid = data["creator"]
         author = workshop.author(sid)
         curs = con.cursor(prepared=True)
         curs.execute("INSERT INTO authors VALUES (%s, %s) ON DUPLICATE KEY UPDATE sname = %s", (sid, author, author,))
         curs.execute("INSERT INTO addons VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE name = %s, lastup = UNIX_TIMESTAMP(NOW()) ", (wsid, data["title"], sid, data["title"],))
-        curs.close()
-        logging.error("inserted addon values")
-
 
         # Delete our old files.
         curs = con.cursor(prepared=True)
