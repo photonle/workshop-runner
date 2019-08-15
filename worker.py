@@ -72,7 +72,7 @@ def workshop_update(args):
         author = workshop.author(sid)
         curs = con.cursor(prepared=True)
         curs.execute("INSERT INTO authors VALUES (%s, %s) ON DUPLICATE KEY UPDATE sname = %s", (sid, author, author,))
-        curs.execute("INSERT INTO addons VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE name = %s, lastup = UNIX_TIMESTAMP(NOW()) ", (wsid, data["title"], sid, data["title"],))
+        curs.execute("INSERT INTO addons VALUES (%s, %s, %s, UNIX_TIMESTAMP(NOW())) ON DUPLICATE KEY UPDATE name = %s, lastup = UNIX_TIMESTAMP(NOW()) ", (wsid, data["title"], sid, data["title"],))
 
         # Delete our old files.
         curs = con.cursor(prepared=True)
