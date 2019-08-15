@@ -162,7 +162,7 @@ def workshop_queued(wsid, title):
         content="[Bulk Update] Queued {} ({}).".format(title, wsid)
     ).execute()
 
-def workshop_update_bulk():
+def workshop_update_bulk(args):
     with faktory.connection() as client:
         for data in workshop.search('[Photon]'):
             client.queue("WorkshopUpdateQueued", args=(data["publishedfileid"], data["title"]))
