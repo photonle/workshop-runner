@@ -14,6 +14,7 @@ import mysql.connector
 from gmad import fromgma
 from os.path import join, relpath, normpath, normcase, basename
 from discord_webhook import DiscordWebhook
+from shutil import rmtree
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -127,7 +128,10 @@ def workshop_update(args):
 
                 con.commit()
                 curs.close()
+        rmtree(gma)
+        rmtree(ext)
         client.queue("WorkshopUpdateComplete", args=(wsid, data["title"], author))
+
 
 def workshop_results_failed(wsid, reason):
     reasonStr = "for an unknown reason"
