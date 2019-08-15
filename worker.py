@@ -15,6 +15,7 @@ from gmad import fromgma
 from os.path import join, relpath, normpath, normcase, basename
 from discord_webhook import DiscordWebhook
 from shutil import rmtree
+from time import time
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -25,19 +26,19 @@ def workshop_update(args):
         logging.debug(data)
 
         if data["result"] != 1:
-            client.queue("WorkshopUpdateFailed", args=(wsid, 'no result'))
+            client.queue("WorkshopUpdateFailed", args=(wsid, 'no result'), priority=10)
             return
 
         if data["banned"] != 0:
-            client.queue("WorkshopUpdateFailed", args=(wsid, 'item banned'))
+            client.queue("WorkshopUpdateFailed", args=(wsid, 'item banned'), priority=10)
             return
 
         if data["creator_app_id"] != 4000 or data["consumer_app_id"] != 4000:
-            client.queue("WorkshopUpdateFailed", args=(wsid, 'not gmod'))
+            client.queue("WorkshopUpdateFailed", args=(wsid, 'not gmod'), priority=10)
             return
 
         if not data["filename"].endswith(".gma"):
-            client.queue("WorkshopUpdateFailed", args=(wsid, 'not gma'))
+            client.queue("WorkshopUpdateFailed", args=(wsid, 'not gma'), priority=10)
             return
 
         con = mysql.connector.connect(
@@ -60,9 +61,9 @@ def workshop_update(args):
         curs = con.cursor(prepared=True)
         curs.execute("SELECT lastup FROM addons WHERE wsid = %s", (wsid,))
         lastup = curs.fetchone()
-        if lastup is not None:
-            logging.error(lastup)
-            # Don't run and return.:
+        if lastup is not None and int(lastup.lastup) <= int(time()):
+            client.queue("WorkshopUpdateFailed", args=(wsid, 'not updated'), priority=10)
+            return
 
         curs.close()
         logging.error("running")
@@ -141,6 +142,8 @@ def workshop_results_failed(wsid, reason):
         reasonStr = "because the item was banned from the steam workshop"
     elif reason == "not gmod" or reason == "not gma":
         reasonStr = "because the item wasn't a gmod addon"
+    elif reason == "not updated":
+        reasonStr = "because the addon hasn't been updated since it was last read"
 
     DiscordWebhook(
         url=env.str("DISCORD_WEBHOOK"),
