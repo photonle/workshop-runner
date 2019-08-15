@@ -145,9 +145,11 @@ def workshop_results_failed(wsid, reason):
     ).execute()
 
 def workshop_results_success(wsid, title, author):
-    logging.error(wsid)
-    logging.error(title)
-    logging.error(author)
+    DiscordWebhook(
+        url=env.str("DISCORD_WEBHOOK"),
+        username="Bot Update Worker",
+        content="The update for {} ({}) by {} succeded!".format(title, wsid, author)
+    ).execute()
 
 w = Worker()
 w.register("UpdateWorkshop", workshop_update)
