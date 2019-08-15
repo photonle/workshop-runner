@@ -136,7 +136,7 @@ def workshop_update(args):
                         print("\tADON-ERR: '{}'!".format(str(err).replace("\n", "\n\t")))
                         curs.execute("INSERT IGNORE INTO errors VALUES (%s, %s, %s)", (p, str(err), wsid,))
         curs.close()
-        client.queue("WorkshopUpdate", args=(wsid, 'complete', data["name"], author), queue='results')
+        client.queue("WorkshopUpdate", args=(wsid, 'complete', data["title"], author), queue='results')
 
 
 
