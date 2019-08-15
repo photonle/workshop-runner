@@ -100,7 +100,7 @@ def workshop_update(args):
 
                 if tld == "auto":
                     try:
-                        comp = subprocess.run('lua ./components.lua "./{}"'.format(pf), capture_output=True, text=True)
+                        comp = subprocess.run(['lua', 'components.lua', pf], capture_output=True, text=True)
                         if comp.returncode != 0:
                             raise subprocess.SubprocessError(comp.stderr)
                         names = [x for x in comp.stdout.strip().split('--##--') if x != '']
