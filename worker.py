@@ -31,7 +31,7 @@ def workshop_update(args):
         if data["creator_app_id"] != 4000 or data["consumer_app_id"] != 4000:
             client.queue("WorkshopUpdate", args=(wsid, 'failure', 'not gmod'), queue='results')
 
-        if not data["file_url"].endswith(".gma"):
+        if not data["filename"].endswith(".gma"):
             client.queue("WorkshopUpdate", args=(wsid, 'failure', 'not gma'), queue='results')
 
         con = mysql.connector.connect(
