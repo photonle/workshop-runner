@@ -42,12 +42,12 @@ def workshop_update(args):
         )
 
         curs = con.cursor()
-        curs.execute('''CREATE TABLE IF NOT EXISTS `addons` ( `wsid` INT(11) UNSIGNED, `name` VARCHAR(500), `author` INT(11) UNSIGNED, `lastup` INTEGER, PRIMARY KEY(`wsid`) )''')
-        curs.execute('''CREATE TABLE IF NOT EXISTS `authors` ( `sid` INT(11) UNSIGNED, `sname` VARCHAR(500), PRIMARY KEY(`sid`) )''')
-        curs.execute('''CREATE TABLE IF NOT EXISTS `files` ( `path` VARCHAR(500), `owner` INT(11) UNSIGNED )''')
-        curs.execute('''CREATE TABLE IF NOT EXISTS `components` ( `cname` VARCHAR(500), `owner` INT(11) UNSIGNED )''')
-        curs.execute('''CREATE TABLE IF NOT EXISTS `cars` ( `cname` VARCHAR(500), `owner` INT(11) UNSIGNED )''')
-        curs.execute('''CREATE TABLE IF NOT EXISTS `errors` ( `path` VARCHAR(500), `error` VARCHAR(500), `owner` INT(11) UNSIGNED )''')
+        curs.execute('''CREATE TABLE IF NOT EXISTS `addons` ( `wsid` VARCHAR(32), `name` VARCHAR(500), `author` VARCHAR(32), `lastup` INTEGER, PRIMARY KEY(`wsid`) )''')
+        curs.execute('''CREATE TABLE IF NOT EXISTS `authors` ( `sid` VARCHAR(32), `sname` VARCHAR(500), PRIMARY KEY(`sid`) )''')
+        curs.execute('''CREATE TABLE IF NOT EXISTS `files` ( `path` VARCHAR(500), `owner` VARCHAR(32) )''')
+        curs.execute('''CREATE TABLE IF NOT EXISTS `components` ( `cname` VARCHAR(500), `owner` VARCHAR(32) )''')
+        curs.execute('''CREATE TABLE IF NOT EXISTS `cars` ( `cname` VARCHAR(500), `owner` VARCHAR(32) )''')
+        curs.execute('''CREATE TABLE IF NOT EXISTS `errors` ( `path` VARCHAR(500), `error` VARCHAR(500), `owner` VARCHAR(32) )''')
         curs.close()
 
         curs = con.cursor(prepared=True)
