@@ -89,10 +89,10 @@ def workshop_update(args):
         lua = join(ext, "lua")
 
         logging.error("walking")
-        curs = con.cursor(prepared=True)
         for rt, dirs, files in walk(lua):
             tld = basename(rt)
             for f in files:
+                curs = con.cursor(prepared=True)
                 pf = join(rt, f)
                 p = normpath(normcase(relpath(join(rt, f), ext)))
                 logging.error("checking {}".format(pf))
@@ -119,8 +119,9 @@ def workshop_update(args):
                             curs.execute("INSERT IGNORE INTO cars VALUES (%s, %s)", (name, wsid,))
                     except subprocess.SubprocessError as err:
                         curs.execute("INSERT IGNORE INTO errors VALUES (%s, %s, %s)", (p, str(err), wsid,))
-        con.commit()
-        curs.close()
+
+                con.commit()
+                curs.close()
         client.queue("WorkshopUpdate", args=(wsid, 'complete', data["title"], author), queue='results')
 
 
