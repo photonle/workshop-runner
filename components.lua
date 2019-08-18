@@ -15,6 +15,21 @@ function table.Copy(i)
 	return o
 end
 
+function table.Add( dest, source )
+	-- At least one of them needs to be a table or this whole thing will fall on its ass
+	if ( !istable( source ) ) then return dest end
+	if ( !istable( dest ) ) then dest = {} end
+
+	for k, v in pairs( source ) do
+		table.insert( dest, v )
+	end
+
+	return dest
+end
+
+function isstring(var) return type(var) == "string" end
+function istable(var) return type(var) == "table" end
+
 function AddCSLuaFile() end
 function include() end
 function Vector(x, y, z) return {x = x, y = y, z = z} end
