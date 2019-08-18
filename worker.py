@@ -77,7 +77,7 @@ def workshop_update(args):
         curs.execute("SELECT lastup FROM addons WHERE wsid = %s", (wsid,))
         lastup = curs.fetchone()
         if lastup is not None and int(lastup[0]) <= int(time()) and not forced:
-            client.queue("WorkshopUpdateFailed", args=(wsid, 'not updated'), priority=10)
+            client.queue("WorkshopUpdateFailed", args=({"wsid": wsid, "reason": 'not updated'},), priority=10)
             return
 
         curs.close()
