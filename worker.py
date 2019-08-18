@@ -28,19 +28,30 @@ def workshop_update(args):
         logging.debug(data)
 
         if data["result"] != 1:
-            client.queue("WorkshopUpdateFailed", args=(wsid, 'no result'), priority=10)
+            client.queue("WorkshopUpdateFailed", args=({"wsid": wsid, "reason": 'no result'},), priority=10)
             return
 
         if data["banned"] != 0:
-            client.queue("WorkshopUpdateFailed", args=(wsid, 'item banned'), priority=10)
+            client.queue("WorkshopUpdateFailed", args=({"wsid": wsid, "reason": 'banned', "title": data["title"]},), priority=10)
             return
 
         if data["creator_app_id"] != 4000 or data["consumer_app_id"] != 4000:
-            client.queue("WorkshopUpdateFailed", args=(wsid, 'not gmod'), priority=10)
+            client.queue("WorkshopUpdateFailed", args=({
+               "wsid": wsid,
+               "reason": 'not gmod',
+               "title": data["title"],
+               "creator": data["creator_app_id"],
+               "consumer": data["consumer_app_id"]
+           },), priority=10)
             return
 
         if not data["filename"].endswith(".gma"):
-            client.queue("WorkshopUpdateFailed", args=(wsid, 'not gma'), priority=10)
+            client.queue("WorkshopUpdateFailed", args=({
+                "wsid": wsid,
+                "reason": 'not gma',
+                "title": data["title"],
+                "file": data["filename"]
+            },), priority=10)
             return
 
         con = mysql.connector.connect(
@@ -72,12 +83,9 @@ def workshop_update(args):
 
         gma, ext = wsid + ".gma", wsid + "_extract"
         # DL / Extract our addon.
-        logging.error("downloading")
         workshop.download(data["file_url"], gma)
-        logging.error("extracting")
         fromgma.extract_gma(gma, ext)
 
-        logging.error("fetching")
         # And fetch our author.
         sid = data["creator"]
         author = workshop.author(sid)
@@ -93,18 +101,15 @@ def workshop_update(args):
         curs.execute("DELETE FROM errors WHERE owner = %s", (wsid,))
         con.commit()
         curs.close()
-        logging.error("deleted old")
 
         lua = join(ext, "lua")
 
-        logging.error("walking")
         for rt, dirs, files in walk(lua):
             tld = basename(rt)
             for f in files:
                 curs = con.cursor(prepared=True)
                 pf = join(rt, f)
                 p = normpath(normcase(relpath(join(rt, f), ext)))
-                logging.error("checking {}".format(pf))
                 curs.execute("INSERT IGNORE INTO files VALUES (%s, %s)", (p, wsid,))
 
                 if tld == "auto":
@@ -133,24 +138,31 @@ def workshop_update(args):
                 curs.close()
         remove(gma)
         rmtree(ext)
-        client.queue("WorkshopUpdateComplete", args=(wsid, data["title"], author))
+        client.queue("WorkshopUpdateComplete", args=(wsid, data["title"], author), priority=7)
 
 
-def workshop_results_failed(wsid, reason):
+def workshop_results_failed(data):
+    reason = data["reason"]
     reasonStr = "for an unknown reason"
     if reason == "no result":
         reasonStr = "because the item could not be found"
     elif reason == "item banned":
         reasonStr = "because the item was banned from the steam workshop"
-    elif reason == "not gmod" or reason == "not gma":
-        reasonStr = "because the item wasn't a gmod addon"
+    elif reason == "not gmod":
+        reasonStr = "because the item wasn't a gmod addon (creator {}, consumer {})".format(data["creator"], data["consumer"])
+    elif reason ==  "not gma":
+        reasonStr = "because the item was packaged incorrectly ({})".format(data["file"])
     elif reason == "not updated":
         reasonStr = "because the addon hasn't been updated since it was last read"
+
+    nameStr = data["wsid"]
+    if "title" in data:
+        nameStr = "{} ({})".format(data["title"], data["wsid"])
 
     DiscordWebhook(
         url=env.str("DISCORD_WEBHOOK"),
         username="Bot Update Worker",
-        content="The update for {} failed {}.".format(wsid, reasonStr)
+        content="The update for {} failed {}.".format(nameStr, reasonStr)
     ).execute()
 
 def workshop_results_success(wsid, title, author):
@@ -171,7 +183,7 @@ def workshop_update_bulk(args):
     with faktory.connection() as client:
         for data in workshop.search('[Photon]'):
             client.queue("WorkshopUpdateQueued", args=(data["publishedfileid"], data["title"]))
-            client.queue("UpdateWorkshop", args=({"wsid": data["publishedfileid"]},))
+            client.queue("UpdateWorkshop", args=({"wsid": data["publishedfileid"]},), priority=8)
 
 w = Worker(concurrency=5)
 w.register("UpdateWorkshop", workshop_update)
