@@ -22,7 +22,9 @@ logging.basicConfig(level=logging.DEBUG)
 def workshop_update(args):
     with faktory.connection() as client:
         wsid = args["wsid"]
-        forced = args["force"]
+        forced = False
+        if "force" in args:
+            forced = args["force"]
 
         data = workshop.query(wsid)
         logging.debug(data)
@@ -182,8 +184,8 @@ def workshop_queued(wsid, title):
 def workshop_update_bulk(args):
     with faktory.connection() as client:
         for data in workshop.search('[Photon]'):
-            client.queue("WorkshopUpdateQueued", args=(data["publishedfileid"], data["title"]))
-            client.queue("UpdateWorkshop", args=({"wsid": data["publishedfileid"]},), priority=8)
+            # client.queue("WorkshopUpdateQueued", args=(data["publishedfileid"], data["title"]))
+            client.queue("UpdateWorkshop", args=({"wsid": data["publishedfileid"], "forced": "forced" in args and args["forced"]},))
 
 w = Worker(concurrency=5)
 w.register("UpdateWorkshop", workshop_update)
