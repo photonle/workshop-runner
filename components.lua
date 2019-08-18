@@ -27,6 +27,19 @@ function table.Add( dest, source )
 	return dest
 end
 
+function table.Reverse( tbl )
+
+	local len = #tbl
+	local ret = {}
+
+	for i = len, 1, -1 do
+		ret[ len - i + 1 ] = tbl[ i ]
+	end
+
+	return ret
+
+end
+
 function isstring(var) return type(var) == "string" end
 function istable(var) return type(var) == "table" end
 
