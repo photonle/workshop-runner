@@ -40,6 +40,8 @@ function table.Reverse( tbl )
 
 end
 
+Format = string.format
+
 function isstring(var) return type(var) == "string" end
 function istable(var) return type(var) == "table" end
 
