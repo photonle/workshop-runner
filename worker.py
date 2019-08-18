@@ -47,7 +47,7 @@ def workshop_update(args):
            },), priority=10)
             return
 
-        if not data["filename"].endswith(".gma"):
+        if not data["filename"].endswith(".gma") and not data["filename"].endswith(".gm"):
             client.queue("WorkshopUpdateFailed", args=({
                 "wsid": wsid,
                 "reason": 'not gma',
