@@ -28,7 +28,6 @@ function table.Add( dest, source )
 end
 
 function table.Reverse( tbl )
-
 	local len = #tbl
 	local ret = {}
 
@@ -36,8 +35,7 @@ function table.Reverse( tbl )
 		ret[ len - i + 1 ] = tbl[ i ]
 	end
 
-	return ret
-
+    return ret
 end
 
 Format = string.format
