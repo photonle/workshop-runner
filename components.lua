@@ -17,8 +17,8 @@ end
 
 function table.Add( dest, source )
 	-- At least one of them needs to be a table or this whole thing will fall on its ass
-	if ( !istable( source ) ) then return dest end
-	if ( !istable( dest ) ) then dest = {} end
+	if ( not istable( source ) ) then return dest end
+	if ( not istable( dest ) ) then dest = {} end
 
 	for k, v in pairs( source ) do
 		table.insert( dest, v )
