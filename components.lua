@@ -5,6 +5,10 @@ function EMVU:AddAutoComponent(t, n) table.insert(names, n) end
 
 function table.Copy(i)
 	local o = {}
+	if i == nil then
+	    return o
+    end
+
 	for k, v in pairs(i) do
 		o[k] = v
 	end
