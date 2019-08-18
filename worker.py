@@ -185,7 +185,7 @@ def workshop_update_bulk(args):
     with faktory.connection() as client:
         for data in workshop.search('[Photon]'):
             # client.queue("WorkshopUpdateQueued", args=(data["publishedfileid"], data["title"]))
-            client.queue("UpdateWorkshop", args=({"wsid": data["publishedfileid"], "forced": "forced" in args and args["forced"]},))
+            client.queue("UpdateWorkshop", args=({"wsid": data["publishedfileid"], "force": "force" in args and args["force"]},))
 
 w = Worker(concurrency=5)
 w.register("UpdateWorkshop", workshop_update)
