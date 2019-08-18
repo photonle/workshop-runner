@@ -22,6 +22,8 @@ logging.basicConfig(level=logging.DEBUG)
 def workshop_update(args):
     with faktory.connection() as client:
         wsid = args["wsid"]
+        forced = args["force"]
+
         data = workshop.query(wsid)
         logging.debug(data)
 
@@ -61,7 +63,7 @@ def workshop_update(args):
         curs = con.cursor(prepared=True)
         curs.execute("SELECT lastup FROM addons WHERE wsid = %s", (wsid,))
         lastup = curs.fetchone()
-        if lastup is not None and int(lastup[0]) <= int(time()):
+        if lastup is not None and int(lastup[0]) <= int(time()) and not forced:
             client.queue("WorkshopUpdateFailed", args=(wsid, 'not updated'), priority=10)
             return
 
