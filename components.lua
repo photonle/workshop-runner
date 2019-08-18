@@ -21,6 +21,10 @@ function Vector(x, y, z) return {x = x, y = y, z = z} end
 function Angle(r, p, y) return {r = r, p = p, y = y} end
 function Color(r, g, b, a) return {r = r, g = g, b = b, a = a or 255} end
 
+function string.StartWith( String, Start )
+	return string.sub( String, 1, string.len( Start ) ) == Start
+end
+
 dofile(arg[1])
 local out = table.concat(names, '--##--')
 print(out)
