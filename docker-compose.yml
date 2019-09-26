@@ -28,6 +28,7 @@ services:
       - .env
     volumes:
       - "photon:/app"
+    restart: always
   worker:
     build: .
     env_file:
