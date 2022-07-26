@@ -5,6 +5,8 @@ from environs import Env
 from requests import get, post
 from lzma import LZMADecompressor
 from json import dumps
+from os.path import exists
+from os import unlink
 
 env = Env()
 env.read_env()
@@ -75,6 +77,10 @@ def download(url, fi):
             for chunk in r.iter_content(128):
                 if not d.eof:
                     f.write(d.decompress(chunk))
+
+    if exists(fi):
+        unlink(fi)
+
     rename(fi + ".tmp", fi)
 
 
