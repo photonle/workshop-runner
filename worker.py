@@ -1,4 +1,7 @@
 from steam.monkey import patch_minimal
+
+from runner.jobs import JobManager
+
 patch_minimal()
 
 import logging
@@ -68,6 +71,8 @@ blocked_jobs = set()
 blocked_types = set()
 blocks = []
 where = ""
+
+manager = JobManager(dbConnection)
 
 
 def block(block: Union[int, str]):
@@ -217,6 +222,7 @@ def workshop_update_legacy(wsid: int, data: dict):
 
 
 def workshop_update(wsid: int, forced: bool = False):
+	forced = True
 	data = workshop.query(wsid)
 	logging.debug(data)
 
@@ -237,7 +243,7 @@ def workshop_update(wsid: int, forced: bool = False):
 		updated_at: datetime.datetime = updated_at[0]
 		is_new = datetime.datetime.fromtimestamp(data["time_updated"]) > updated_at
 
-	if not is_new:
+	if not is_new and not forced:
 		return queue("StatusMessage", f"{data.get('title', wsid)} has not been changed since the last read.")
 
 	author(data["creator"])
@@ -269,19 +275,10 @@ def scan():
 
 
 print("started")
-loop = True
-while loop:
-	# loop = False
-	sleep(1)
-	nextJob = job()
-
-	if nextJob is None:
-		sleep(5)
-		continue
-
-	jobId = int(nextJob[0])
-	jobType = nextJob[2]
-	jobData = nextJob[3]
+for job in manager.consume():
+	jobId = job.id
+	jobType = job.type
+	jobData = job.data
 
 	handled = True
 	failed = True
@@ -301,13 +298,13 @@ while loop:
 		handled = False
 
 	if handled:
-		done(jobId)
+		job.done()
 	elif failed:
-		block(jobId)
-		unlock(jobId)
+		manager.block(jobId)
+		job.unlock()
 	else:
-		block(jobType)
-		unlock(jobId)
+		manager.block(jobType)
+		job.unlock()
 
 
 
