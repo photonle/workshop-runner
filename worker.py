@@ -140,7 +140,7 @@ def workshop_scan_addon(wsid: int, basedir: str):
 
 			if tld == "auto":
 				try:
-					comp = subprocess.run(['lua', 'components.lua', pf], capture_output=True, text=True)
+					comp = subprocess.run(['/usr/bin/lua', 'components.lua', pf], capture_output=True, text=True)
 					if comp.returncode != 0:
 						raise subprocess.SubprocessError(comp.stderr)
 					names = [x for x in comp.stdout.strip().split('--##--') if x != '']
@@ -151,7 +151,7 @@ def workshop_scan_addon(wsid: int, basedir: str):
 
 			if tld == "autorun":
 				try:
-					comp = subprocess.run(['lua', 'cars.lua', pf], capture_output=True, text=True)
+					comp = subprocess.run(['/usr/bin/lua', 'cars.lua', pf], capture_output=True, text=True)
 					if comp.returncode != 0:
 						raise subprocess.SubprocessError(comp.stderr)
 					names = [x for x in comp.stdout.strip().split('--##--') if x != '']
