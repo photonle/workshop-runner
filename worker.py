@@ -280,7 +280,7 @@ while loop:
 		sleep(5)
 		continue
 
-	jobId = nextJob[0]
+	jobId = int(nextJob[0])
 	jobType = nextJob[2]
 	jobData = nextJob[3]
 
