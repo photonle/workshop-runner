@@ -171,7 +171,7 @@ def workshop_update_steampipe(wsid: int, addon: dict):
 	basedir = join(tmpdir, f"{wsid}_extract")
 	if len(files) == 1:
 		file = files[0]
-		gma = abspath(join(tmpdir, file.filename))
+		gma = abspath(join(tmpdir, f"{wsid}.gma"))
 		with open(gma, "wb") as out:
 			reading = True
 			while reading:
