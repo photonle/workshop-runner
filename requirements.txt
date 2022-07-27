@@ -8,12 +8,20 @@ cachetools==5.2.0
     # via steam
 certifi==2022.6.15
     # via requests
+cffi==1.15.1
+    # via gevent
 charset-normalizer==2.1.0
     # via requests
 discord-webhook==0.16.3
     # via -r requirements.in
 environs==9.5.0
     # via -r requirements.in
+gevent==21.12.0
+    # via gevent-eventemitter
+gevent-eventemitter==2.1
+    # via -r requirements.in
+greenlet==1.1.2
+    # via gevent
 idna==3.3
     # via requests
 marshmallow==3.17.0
@@ -24,6 +32,8 @@ packaging==21.3
     # via marshmallow
 protobuf==3.20.1
     # via mysql-connector-python
+pycparser==2.21
+    # via cffi
 pycryptodomex==3.15.0
     # via steam
 pyparsing==3.0.9
@@ -42,3 +52,10 @@ urllib3==1.26.11
     # via requests
 vdf==3.4
     # via steam
+zope-event==4.5.0
+    # via gevent
+zope-interface==5.4.0
+    # via gevent
+
+# The following packages are considered to be unsafe in a requirements file:
+# setuptools
