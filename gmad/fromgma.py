@@ -8,11 +8,13 @@ from binascii import crc32
 from shutil import rmtree
 from json import loads as json_decode
 import chardet
+from .file_ext import File
 
 if __name__ == "__main__":
     import utils
 else:
     import gmad.utils as utils
+
 
 def get_header(in_path):
     """Extracts the gma header from the input file."""
@@ -20,22 +22,24 @@ def get_header(in_path):
         raise IOError("in_path " + in_path + " does not exist.")
 
     file = open(in_path, 'rb')
+    file = File(file)
     data = {}
 
-    data['identifier'] = utils.read_length_string(file, 4)
+    data['identifier'] = file.read_string(4)
     if data['identifier'] != "GMAD":
         raise IOError("in_path `" + in_path + "` does not contain .gma file.")
 
-    data['gmadversion'] = utils.read_int(file, 1)
-    data['steamid'] = utils.read_int(file, 8)
-    data['timestamp'] = utils.read_int(file, 8)
-    data['required'] = utils.read_int(file, 1)
-    data['title'] = utils.read_null_string(file)
-    data['info'] = utils.read_null_string(file)
-    data['author'] = utils.read_null_string(file)
-    data['version'] = utils.read_int(file)
+    data['gmadversion'] = file.read_int(1)
+    data['steamid'] = file.read_int(8)
+    data['timestamp'] = file.read_int(8)
+    data['required'] = file.read_int(1)
+    data['title'] = file.read_null_string()
+    data['info'] = file.read_null_string()
+    data['author'] = file.read_null_string()
+    data['version'] = file.read_int()
 
     return data, file
+
 
 def extract_header(in_path):
     """Extracts the gma header, closing the file and returning the information."""
@@ -44,6 +48,7 @@ def extract_header(in_path):
 
     header['in_json'] = json_decode(header['info'])
     return header
+
 
 def extract_gma(in_path, out_path):
     if path_exists(out_path):
@@ -68,8 +73,8 @@ def extract_gma(in_path, out_path):
     for key in range(file_num):
         content = file.read(files[key]["size"])
 
-        if crc32(content) != files[key]['crc']:
-            raise IOError("CRC of data from " + files[key]['name'] + " failed to pass CRC.")
+        # if crc32(content) != files[key]['crc']:
+        #     raise IOError("CRC of data from " + files[key]['name'] + " failed to pass CRC.")
 
         tmp_out_path = path_join(out_path, files[key]['name'])
         if not path_exists(path_get_directory(tmp_out_path)):
