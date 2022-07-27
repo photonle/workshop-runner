@@ -264,6 +264,7 @@ def scan():
 			queue("UpdateAddon", data["publishedfileid"])
 
 
+print("started")
 while True:
 	sleep(1)
 	nextJob = job()
