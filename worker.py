@@ -25,6 +25,9 @@ env = Env()
 env.read_env()
 
 logging.basicConfig(level=logging.DEBUG)
+logging.getLogger("SteamClient").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("chardet").setLevel(logging.WARNING)
 
 dbConnection = connect(
 	host=os.environ['MYSQL_HOST'],
