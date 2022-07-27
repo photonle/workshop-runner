@@ -71,12 +71,10 @@ where = ""
 
 
 def block(block: Union[int, str]):
-	print(f"blocking {block}")
+	global where, blocks
 	if isinstance(block, int):
-		print("job id")
 		blocked_jobs.add(block)
 	else:
-		print("job type")
 		blocked_types.add(block)
 	blocks = list(blocked_jobs)
 	blocks.extend(blocked_types)
@@ -87,10 +85,10 @@ def block(block: Union[int, str]):
 	if len(blocked_types) != 0:
 		where.append(f"type NOT IN ({', '.join(['%s'] * len(blocked_types))})")
 	where = "" if len(where) == 0 else f"AND {' AND '.join(where)}"
-	print(f"rebuild query: {where}")
 
 
 def job():
+	global where, blocks
 	dbCursor.execute(f"SELECT * FROM jobs WHERE status = 'new' {where} ORDER BY FIELD(type, 'StatusMessage') DESC, ID ASC LIMIT 1 FOR UPDATE", blocks)
 	jobs = dbCursor.fetchall()
 	for job in jobs:
@@ -127,43 +125,41 @@ def author(communityId: int):
 		return
 
 	author = workshop.author(communityId)
-	print(communityId, author)
 	dbCursor.execute("INSERT INTO authors (sid, name) VALUES (%s, %s) ON DUPLICATE KEY UPDATE name = %s, updated_at = NOW();", (communityId, author, author))
 	dbCursor.execute("COMMIT")
 
 
 def workshop_scan_addon(wsid: int, basedir: str):
 	luadir = join(basedir, "lua")
-	print(luadir)
 
 	for rt, dirs, files in walk(luadir):
 		tld = basename(rt)
 		for f in files:
 			pf = join(rt, f)
 			p = normpath(normcase(relpath(join(rt, f), basedir)))
-			dbCursor.execute("INSERT INTO files VALUES (%s, %s)", (p, wsid,))
+			dbCursor.execute("INSERT OR REPLACE INTO files VALUES (%s, %s)", (p, wsid,))
 
 			if tld == "auto":
 				try:
-					comp = subprocess.run(['/usr/bin/lua', 'components.lua', pf], capture_output=True, text=True)
+					comp = subprocess.run(['lua', 'components.lua', pf], capture_output=True, text=True)
 					if comp.returncode != 0:
 						raise subprocess.SubprocessError(comp.stderr)
 					names = [x for x in comp.stdout.strip().split('--##--') if x != '']
 					for name in names:
-						dbCursor.execute("INSERT INTO components VALUES (%s, %s)", (name, wsid,))
+						dbCursor.execute("INSERT OR REPLACE INTO components VALUES (%s, %s)", (name, wsid,))
 				except subprocess.SubprocessError as err:
-					dbCursor.execute("INSERT INTO errors VALUES (%s, %s, %s)", (p, str(err), wsid,))
+					dbCursor.execute("INSERT OR REPLACE INTO errors VALUES (%s, %s, %s)", (p, str(err), wsid,))
 
 			if tld == "autorun":
 				try:
-					comp = subprocess.run(['/usr/bin/lua', 'cars.lua', pf], capture_output=True, text=True)
+					comp = subprocess.run(['lua', 'cars.lua', pf], capture_output=True, text=True)
 					if comp.returncode != 0:
 						raise subprocess.SubprocessError(comp.stderr)
 					names = [x for x in comp.stdout.strip().split('--##--') if x != '']
 					for name in names:
-						dbCursor.execute("INSERT INTO vehicles VALUES (%s, %s)", (name, wsid,))
+						dbCursor.execute("INSERT OR REPLACE INTO vehicles VALUES (%s, %s)", (name, wsid,))
 				except subprocess.SubprocessError as err:
-					dbCursor.execute("INSERT INTO errors VALUES (%s, %s, %s)", (p, str(err), wsid,))
+					dbCursor.execute("INSERT OR REPLACE INTO errors VALUES (%s, %s, %s)", (p, str(err), wsid,))
 
 
 def workshop_update_steampipe(wsid: int, addon: dict):
@@ -211,7 +207,6 @@ def workshop_update_legacy(wsid: int, data: dict):
 		return queue("StatusMessage", f"{data.get('title', wsid)} does not contain a .gma file.")
 
 	gma, ext = abspath(join(".", "tmp", f"{wsid}.gma")), abspath(join(".", "tmp", f"{wsid}_extract"))
-	print(ext)
 	# Download / Extract our addon.
 	workshop.download(data["file_url"], gma)
 	fromgma.extract_gma(gma, ext)
@@ -222,7 +217,6 @@ def workshop_update_legacy(wsid: int, data: dict):
 
 
 def workshop_update(wsid: int, forced: bool = False):
-	print(f"Updating {wsid}")
 	data = workshop.query(wsid)
 	logging.debug(data)
 
