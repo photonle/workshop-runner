@@ -1,6 +1,6 @@
 from enum import Enum
 from time import sleep
-from typing import Optional, Any, Set, Union, List, Tuple, Iterator
+from typing import Optional, Any, Set, Union, List, Tuple, Iterator, Type, TypeVar
 from datetime import datetime
 
 from mysql.connector import CMySQLConnection, MySQLConnection
@@ -63,15 +63,20 @@ class DatabaseJob(Job):
 		return self.set_status(JobStatus.NEW, auto_commit)
 
 
+T = TypeVar('T', bound=Type[DatabaseJob])
+
+
 class JobManager:
 	blocked_jobs: Set[int] = set()
 	blocked_types: Set[str] = set()
 	blocks: List[Union[int, str]] = []
 	where: str = ""
 	cursor: CMySQLCursor
+	create_class: T
 
-	def __init__(self, connection: Union[CMySQLConnection, MySQLConnection]):
+	def __init__(self, connection: Union[CMySQLConnection, MySQLConnection], create_class: T = DatabaseJob):
 		self.cursor = connection.cursor()
+		self.create_class = create_class
 
 	def block(self, block: Union[int, str]):
 		if isinstance(block, int):
@@ -88,7 +93,7 @@ class JobManager:
 			where.append(f"type NOT IN ({', '.join(['%s'] * len(self.blocked_types))})")
 		self.where = "" if len(where) == 0 else f"AND {' AND '.join(where)}"
 
-	def next(self) -> Optional[DatabaseJob]:
+	def next(self) -> Optional[T]:
 		self.cursor.execute("START TRANSACTION;")
 		self.cursor.execute(
 			f"""
@@ -112,9 +117,9 @@ class JobManager:
 			self.cursor.execute("COMMIT")
 			return None
 
-		return DatabaseJob(jobs[0], self.cursor).lock()
+		return self.create_class(jobs[0], self.cursor).lock()
 
-	def consume(self) -> Iterator[DatabaseJob]:
+	def consume(self) -> Iterator[T]:
 		while True:
 			job = self.next()
 			if job:
