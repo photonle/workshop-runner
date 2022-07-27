@@ -1,196 +1,306 @@
+from steam.monkey import patch_minimal
+patch_minimal()
+
+import logging
+import datetime
+import os
 import subprocess
 from os import walk, remove
+from os.path import join, relpath, normpath, normcase, basename, abspath, dirname, exists
+from typing import Optional, Union
+from shutil import rmtree
+from time import sleep
 
+from mysql.connector import connect
+from steam.client import SteamClient
+from steam.client.cdn import CDNClient
 from environs import Env
+from discord_webhook import DiscordWebhook
+
+from gmad.file_ext import File
+import workshop
+from gmad import fromgma
 
 env = Env()
 env.read_env()
 
-import faktory
-from faktory import Worker
-import logging
-import workshop
-import mysql.connector
-from gmad import fromgma
-from os.path import join, relpath, normpath, normcase, basename
-from discord_webhook import DiscordWebhook
-from shutil import rmtree
-from time import time
-
 logging.basicConfig(level=logging.DEBUG)
 
-def workshop_update(args):
-    with faktory.connection() as client:
-        wsid = args["wsid"]
-        forced = False
-        if "force" in args:
-            forced = args["force"]
+dbConnection = connect(
+	host=os.environ['MYSQL_HOST'],
+	port=os.environ['MYSQL_PORT'],
+	user=os.environ['MYSQL_USER'],
+	password=os.environ['MYSQL_PASS'],
+	database=os.environ['MYSQL_DB']
+)
+dbCursor = dbConnection.cursor()
+dbCursor.execute("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci;")
+dbCursor.execute("SET CHARACTER SET utf8mb4;")
 
-        data = workshop.query(wsid)
-        logging.debug(data)
-
-        if data["result"] != 1:
-            client.queue("WorkshopUpdateFailed", args=({"wsid": wsid, "reason": 'no result'},), priority=10)
-            return
-
-        if data["banned"] != 0:
-            client.queue("WorkshopUpdateFailed", args=({"wsid": wsid, "reason": 'banned', "title": data["title"]},), priority=10)
-            return
-
-        if data["creator_app_id"] != 4000 or data["consumer_app_id"] != 4000:
-            client.queue("WorkshopUpdateFailed", args=({
-               "wsid": wsid,
-               "reason": 'not gmod',
-               "title": data["title"],
-               "creator": data["creator_app_id"],
-               "consumer": data["consumer_app_id"]
-           },), priority=10)
-            return
-
-        if not data["filename"].endswith(".gma") and not data["filename"].endswith(".gm"):
-            client.queue("WorkshopUpdateFailed", args=({
-                "wsid": wsid,
-                "reason": 'not gma',
-                "title": data["title"],
-                "file": data["filename"]
-            },), priority=10)
-            return
-
-        con = mysql.connector.connect(
-            user=env.str("MYSQL_USER"),
-            password=env.str("MYSQL_PASSWORD"),
-            host="db",
-            database=env.str("MYSQL_DATABASE")
-        )
-
-        curs = con.cursor()
-        curs.execute('''CREATE TABLE IF NOT EXISTS `addons` ( `wsid` VARCHAR(32), `name` VARCHAR(500), `author` VARCHAR(32), `lastup` INTEGER, PRIMARY KEY(`wsid`) )''')
-        curs.execute('''CREATE TABLE IF NOT EXISTS `authors` ( `sid` VARCHAR(32), `sname` VARCHAR(500), PRIMARY KEY(`sid`) )''')
-        curs.execute('''CREATE TABLE IF NOT EXISTS `files` ( `path` VARCHAR(500), `owner` VARCHAR(32) )''')
-        curs.execute('''CREATE TABLE IF NOT EXISTS `components` ( `cname` VARCHAR(500), `owner` VARCHAR(32) )''')
-        curs.execute('''CREATE TABLE IF NOT EXISTS `cars` ( `cname` VARCHAR(500), `owner` VARCHAR(32) )''')
-        curs.execute('''CREATE TABLE IF NOT EXISTS `errors` ( `path` VARCHAR(500), `error` VARCHAR(500), `owner` VARCHAR(32) )''')
-        con.commit()
-        curs.close()
-
-        curs = con.cursor(prepared=True)
-        curs.execute("SELECT lastup FROM addons WHERE wsid = %s", (wsid,))
-        lastup = curs.fetchone()
-        if lastup is not None and int(lastup[0]) <= int(time()) and not forced:
-            client.queue("WorkshopUpdateFailed", args=({"wsid": wsid, "reason": 'not updated'},), priority=10)
-            return
-
-        curs.close()
-        logging.error("running")
-
-        gma, ext = wsid + ".gma", wsid + "_extract"
-        # DL / Extract our addon.
-        workshop.download(data["file_url"], gma)
-        fromgma.extract_gma(gma, ext)
-
-        # And fetch our author.
-        sid = data["creator"]
-        author = workshop.author(sid)
-        curs = con.cursor(prepared=True)
-        curs.execute("INSERT INTO authors VALUES (%s, %s) ON DUPLICATE KEY UPDATE sname = %s", (sid, author, author,))
-        curs.execute("INSERT INTO addons VALUES (%s, %s, %s, UNIX_TIMESTAMP(NOW())) ON DUPLICATE KEY UPDATE name = %s, lastup = UNIX_TIMESTAMP(NOW()) ", (wsid, data["title"], sid, data["title"],))
-
-        # Delete our old files.
-        curs = con.cursor(prepared=True)
-        curs.execute("DELETE FROM files WHERE owner = %s", (wsid,))
-        curs.execute("DELETE FROM components WHERE owner = %s", (wsid,))
-        curs.execute("DELETE FROM cars WHERE owner = %s", (wsid,))
-        curs.execute("DELETE FROM errors WHERE owner = %s", (wsid,))
-        con.commit()
-        curs.close()
-
-        lua = join(ext, "lua")
-
-        for rt, dirs, files in walk(lua):
-            tld = basename(rt)
-            for f in files:
-                curs = con.cursor(prepared=True)
-                pf = join(rt, f)
-                p = normpath(normcase(relpath(join(rt, f), ext)))
-                curs.execute("INSERT IGNORE INTO files VALUES (%s, %s)", (p, wsid,))
-
-                if tld == "auto":
-                    try:
-                        comp = subprocess.run(['lua', 'components.lua', pf], capture_output=True, text=True)
-                        if comp.returncode != 0:
-                            raise subprocess.SubprocessError(comp.stderr)
-                        names = [x for x in comp.stdout.strip().split('--##--') if x != '']
-                        for name in names:
-                            curs.execute("INSERT IGNORE INTO components VALUES (%s, %s)", (name, wsid,))
-                    except subprocess.SubprocessError as err:
-                        curs.execute("INSERT IGNORE INTO errors VALUES (%s, %s, %s)", (p, str(err), wsid,))
-
-                if tld == "autorun":
-                    try:
-                        comp = subprocess.run(['lua', 'cars.lua', pf], capture_output=True, text=True)
-                        if comp.returncode != 0:
-                            raise subprocess.SubprocessError(comp.stderr)
-                        names = [x for x in comp.stdout.strip().split('--##--') if x != '']
-                        for name in names:
-                            curs.execute("INSERT IGNORE INTO cars VALUES (%s, %s)", (name, wsid,))
-                    except subprocess.SubprocessError as err:
-                        curs.execute("INSERT IGNORE INTO errors VALUES (%s, %s, %s)", (p, str(err), wsid,))
-
-                con.commit()
-                curs.close()
-        remove(gma)
-        rmtree(ext)
-        client.queue("WorkshopUpdateComplete", args=(wsid, data["title"], author), priority=7)
+steam = SteamClient()
+steam.anonymous_login()
+net = CDNClient(steam)
 
 
-def workshop_results_failed(data):
-    reason = data["reason"]
-    reasonStr = "for an unknown reason"
-    if reason == "no result":
-        reasonStr = "because the item could not be found"
-    elif reason == "item banned":
-        reasonStr = "because the item was banned from the steam workshop"
-    elif reason == "not gmod":
-        reasonStr = "because the item wasn't a gmod addon (creator {}, consumer {})".format(data["creator"], data["consumer"])
-    elif reason ==  "not gma":
-        reasonStr = "because the item was packaged incorrectly ({})".format(data["file"])
-    elif reason == "not updated":
-        reasonStr = "because the addon hasn't been updated since it was last read"
+class ClearAddon:
+	workshop_id: int
 
-    nameStr = data["wsid"]
-    if "title" in data:
-        nameStr = "{} ({})".format(data["title"], data["wsid"])
+	def __init__(self, workshop_id: int):
+		self.workshop_id = workshop_id
 
-    DiscordWebhook(
-        url=env.str("DISCORD_WEBHOOK"),
-        username="Bot Update Worker",
-        content="The update for {} failed {}.".format(nameStr, reasonStr)
-    ).execute()
+	def __enter__(self):
+		dbCursor.execute("START TRANSACTION")
+		dbCursor.execute("DELETE FROM addons WHERE wsid = %s", (self.workshop_id,))
 
-def workshop_results_success(wsid, title, author):
-    DiscordWebhook(
-        url=env.str("DISCORD_WEBHOOK"),
-        username="Bot Update Worker",
-        content="The update for {} ({}) by {} succeded!".format(title, wsid, author)
-    ).execute()
+	def __exit__(self, exc_type, exc_val, exc_tb):
+		if exc_type is not None:
+			logging.debug("Rolling Back")
+			dbCursor.execute("ROLLBACK")
+		else:
+			dbCursor.execute("COMMIT")
+			return True
 
-def workshop_queued(wsid, title):
-    DiscordWebhook(
-        url=env.str("DISCORD_WEBHOOK"),
-        username="Bot Update Worker",
-        content="[Bulk Update] Queued {} ({}).".format(title, wsid)
-    ).execute()
 
-def workshop_update_bulk(args):
-    with faktory.connection() as client:
-        for data in workshop.search('[Photon]'):
-            # client.queue("WorkshopUpdateQueued", args=(data["publishedfileid"], data["title"]))
-            client.queue("UpdateWorkshop", args=({"wsid": data["publishedfileid"], "force": "force" in args and args["force"]},))
+blocked_jobs = set()
+blocked_types = set()
+blocks = []
+where = ""
 
-w = Worker(concurrency=5)
-w.register("UpdateWorkshop", workshop_update)
-w.register("WorkshopUpdateFailed", workshop_results_failed)
-w.register("WorkshopUpdateComplete", workshop_results_success)
-w.register("WorkshopUpdateQueued", workshop_queued)
-w.register("UpdateAllWorkshop", workshop_update_bulk)
-w.run()
+
+def block(block: Union[int, str]):
+	if isinstance(block, int):
+		blocked_jobs.add(block)
+	else:
+		blocked_types.add(block)
+	blocks = list(blocked_jobs).append(list(blocked_types))
+
+	where = []
+	if len(blocked_jobs) != 0:
+		where.append(f"id NOT IN ({', '.join(['%s'] * len(blocked_jobs))})")
+	if len(blocked_types) != 0:
+		where.append(f"type NOT IN ({', '.join(['%s'] * len(blocked_types))})")
+	where = "" if len(where) == 0 else f"AND {' AND '.join(where)}"
+
+
+def job():
+	dbCursor.execute(f"SELECT * FROM jobs WHERE status = 'new' {where} ORDER BY FIELD(type, 'StatusMessage') DESC, ID ASC LIMIT 1 FOR UPDATE", blocks)
+	jobs = dbCursor.fetchall()
+	for job in jobs:
+		dbCursor.execute("UPDATE jobs SET status = 'locked' WHERE id = %s", (job[0],))
+		dbCursor.execute("COMMIT")
+		return job
+	dbCursor.execute("COMMIT")
+
+
+def unlock(job_id: int):
+	dbCursor.execute("UPDATE jobs SET status = 'new' WHERE id = %s", (job_id,))
+	dbCursor.execute("COMMIT")
+
+
+def queue(type: str, data: Optional[str] = None):
+	if data is None:
+		dbCursor.execute("INSERT INTO jobs (type) VALUES (%s);", (type,))
+	else:
+		dbCursor.execute("INSERT INTO jobs (type, data) VALUES (%s, %s);", (type, data,))
+	dbCursor.execute("COMMIT")
+
+
+def done(jobId: int):
+	dbCursor.execute("UPDATE jobs SET status = 'done' WHERE id = %s;", (jobId,))
+
+
+def author(communityId: int):
+	logging.debug("Updating author %s", communityId)
+	dbCursor.execute("SELECT NOW() > DATE_ADD(updated_at, INTERVAL 14 DAY) AS outdated FROM authors WHERE sid = %s;", (communityId,))
+	outdated = dbCursor.fetchone()
+	outdated = True if outdated is None else outdated[0] == 1
+
+	if not outdated:
+		return
+
+	author = workshop.author(communityId)
+	print(communityId, author)
+	dbCursor.execute("INSERT INTO authors (sid, name) VALUES (%s, %s) ON DUPLICATE KEY UPDATE name = %s, updated_at = NOW();", (communityId, author, author))
+	dbCursor.execute("COMMIT")
+
+
+def workshop_scan_addon(wsid: int, basedir: str):
+	luadir = join(basedir, "lua")
+
+	for rt, dirs, files in walk(luadir):
+		tld = basename(rt)
+		for f in files:
+			pf = join(rt, f)
+			p = normpath(normcase(relpath(join(rt, f), basedir)))
+			dbCursor.execute("INSERT INTO files VALUES (%s, %s)", (p, wsid,))
+
+			if tld == "auto":
+				try:
+					comp = subprocess.run(['lua', 'components.lua', pf], capture_output=True, text=True)
+					if comp.returncode != 0:
+						raise subprocess.SubprocessError(comp.stderr)
+					names = [x for x in comp.stdout.strip().split('--##--') if x != '']
+					for name in names:
+						dbCursor.execute("INSERT INTO components VALUES (%s, %s)", (name, wsid,))
+				except subprocess.SubprocessError as err:
+					dbCursor.execute("INSERT INTO errors VALUES (%s, %s, %s)", (p, str(err), wsid,))
+
+			if tld == "autorun":
+				try:
+					comp = subprocess.run(['lua', 'cars.lua', pf], capture_output=True, text=True)
+					if comp.returncode != 0:
+						raise subprocess.SubprocessError(comp.stderr)
+					names = [x for x in comp.stdout.strip().split('--##--') if x != '']
+					for name in names:
+						dbCursor.execute("INSERT INTO vehicles VALUES (%s, %s)", (name, wsid,))
+				except subprocess.SubprocessError as err:
+					dbCursor.execute("INSERT INTO errors VALUES (%s, %s, %s)", (p, str(err), wsid,))
+
+
+def workshop_update_steampipe(wsid: int, addon: dict):
+	logging.debug("Running SteamPipe update for %s.", wsid)
+
+	manifest = net.get_manifest_for_workshop_item(int(wsid))
+	tmpdir = join("tmp")
+	files = list(manifest.iter_files())
+	basedir = join(tmpdir, f"{wsid}_extract")
+	if len(files) == 1:
+		file = files[0]
+		gma = abspath(join(tmpdir, file.filename))
+		with open(gma, "wb") as out:
+			reading = True
+			while reading:
+				data = file.read(1024)
+				if not data:
+					reading = False
+				else:
+					out.write(data)
+		fromgma.extract_gma(gma, basedir)
+		remove(gma)
+	else:
+		basedir = f"{wsid}_extract"
+		for file in manifest.iter_files():
+			filepath = join(basedir, file.filename)
+			filedir = dirname(filepath)
+			if not exists(filedir):
+				os.mkdir(filedir)
+			with open(filepath, "wb") as out:
+				reading = True
+				while reading:
+					data = file.read(1024)
+					if not data:
+						reading = False
+					else:
+						out.write(data)
+	workshop_scan_addon(wsid, basedir)
+	rmtree(basedir)
+
+
+def workshop_update_legacy(wsid: int, data: dict):
+	logging.debug("Running legacy update for %s.", wsid)
+	if not data["filename"].endswith(".gma") and not data["filename"].endswith(".gm"):
+		return queue("StatusMessage", f"{data.get('title', wsid)} does not contain a .gma file.")
+
+	gma, ext = f"tmp/{wsid}.gma", f"tmp/{wsid}_extract"
+	# Download / Extract our addon.
+	workshop.download(data["file_url"], gma)
+	fromgma.extract_gma(gma, ext)
+	workshop_scan_addon(wsid, ext)
+
+	remove(gma)
+	rmtree(ext)
+
+
+def workshop_update(wsid: int, forced: bool = False):
+	print(f"Updating {wsid}")
+	data = workshop.query(wsid)
+	logging.debug(data)
+
+	if data["result"] != 1:
+		return queue("StatusMessage", f"{wsid} failed to update, steam returned no result.")
+
+	if data["banned"] != 0:
+		return queue("StatusMessage", f"{data.get('title', wsid)} was banned.")
+
+	if (data["creator_app_id"] != 4000 and data["creator_app_id"] != 4020) or (data["consumer_app_id"] != 4000 and data["consumer_app_id"] != 4020):
+		return queue("StatusMessage", f"{data.get('title', wsid)} is not on the garry's mod workshop.")
+
+	dbCursor.execute("SELECT updated_at FROM addons WHERE wsid = %s", (wsid,))
+	updated_at = dbCursor.fetchone()
+
+	is_new = True
+	if updated_at is not None:
+		updated_at: datetime.datetime = updated_at[0]
+		is_new = datetime.datetime.fromtimestamp(data["time_updated"]) > updated_at
+
+	if not is_new:
+		return queue("StatusMessage", f"{data.get('title', wsid)} has not been changed since the last read.")
+
+	author(data["creator"])
+
+	with ClearAddon(wsid):
+		dbCursor.execute("INSERT INTO addons (wsid, name, author) VALUES (%s, %s, %s)", (wsid, data['title'], data['creator']))
+
+		if data["file_url"] == "":
+			workshop_update_steampipe(wsid, data)
+		else:
+			workshop_update_legacy(wsid, data)
+
+	return queue("StatusMessage", f"{data.get('title', wsid)} has been succesfully updated.")
+
+
+def status_message(text: str):
+	DiscordWebhook(
+		url=env.str("DISCORD_WEBHOOK"),
+		username="Bot Update Worker",
+		content=text
+	).execute()
+
+
+def scan():
+	for data in workshop.search('[Photon]'):
+		if data['result'] == 1:
+			author(data["creator"])
+			queue("UpdateAddon", data["publishedfileid"])
+
+
+while True:
+	sleep(1)
+	nextJob = job()
+
+	if nextJob is None:
+		sleep(5)
+		continue
+
+	jobId = nextJob[0]
+	jobType = nextJob[2]
+	jobData = nextJob[3]
+
+	handled = True
+	failed = True
+
+	try:
+		if jobType == "UpdateAddon":
+			workshop_update(jobData)
+		elif jobType == "StatusMessage":
+			status_message(jobData)
+		elif jobType == "Scan":
+			scan()
+		else:
+			handled = False
+	except Exception as e:
+		logging.error(e)
+		failed = True
+		handled = False
+
+	if handled:
+		done(jobId)
+	elif failed:
+		block(jobId)
+		unlock(jobId)
+	else:
+		block(jobType)
+		unlock(jobId)
+
+
+
