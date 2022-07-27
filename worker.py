@@ -129,6 +129,7 @@ def author(communityId: int):
 
 def workshop_scan_addon(wsid: int, basedir: str):
 	luadir = join(basedir, "lua")
+	print(luadir)
 
 	for rt, dirs, files in walk(luadir):
 		tld = basename(rt)
@@ -164,7 +165,7 @@ def workshop_update_steampipe(wsid: int, addon: dict):
 	logging.debug("Running SteamPipe update for %s.", wsid)
 
 	manifest = net.get_manifest_for_workshop_item(int(wsid))
-	tmpdir = join("tmp")
+	tmpdir = abspath(join(".", "tmp"))
 	files = list(manifest.iter_files())
 	basedir = join(tmpdir, f"{wsid}_extract")
 	if len(files) == 1:
@@ -204,7 +205,8 @@ def workshop_update_legacy(wsid: int, data: dict):
 	if not data["filename"].endswith(".gma") and not data["filename"].endswith(".gm"):
 		return queue("StatusMessage", f"{data.get('title', wsid)} does not contain a .gma file.")
 
-	gma, ext = f"tmp/{wsid}.gma", f"tmp/{wsid}_extract"
+	gma, ext = abspath(join(".", "tmp", f"{wsid}.gma")), abspath(join(".", "tmp", f"{wsid}_extract"))
+	print(ext)
 	# Download / Extract our addon.
 	workshop.download(data["file_url"], gma)
 	fromgma.extract_gma(gma, ext)
