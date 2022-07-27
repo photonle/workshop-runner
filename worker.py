@@ -137,7 +137,7 @@ def workshop_scan_addon(wsid: int, basedir: str):
 		for f in files:
 			pf = join(rt, f)
 			p = normpath(normcase(relpath(join(rt, f), basedir)))
-			dbCursor.execute("INSERT OR REPLACE INTO files VALUES (%s, %s)", (p, wsid,))
+			dbCursor.execute("INSERT IGNORE INTO files VALUES (%s, %s)", (p, wsid,))
 
 			if tld == "auto":
 				try:
@@ -146,9 +146,9 @@ def workshop_scan_addon(wsid: int, basedir: str):
 						raise subprocess.SubprocessError(comp.stderr)
 					names = [x for x in comp.stdout.strip().split('--##--') if x != '']
 					for name in names:
-						dbCursor.execute("INSERT OR REPLACE INTO components VALUES (%s, %s)", (name, wsid,))
+						dbCursor.execute("INSERT IGNORE INTO components VALUES (%s, %s)", (name, wsid,))
 				except subprocess.SubprocessError as err:
-					dbCursor.execute("INSERT OR REPLACE INTO errors VALUES (%s, %s, %s)", (p, str(err), wsid,))
+					dbCursor.execute("INSERT IGNORE INTO errors VALUES (%s, %s, %s)", (p, str(err), wsid,))
 
 			if tld == "autorun":
 				try:
@@ -157,9 +157,9 @@ def workshop_scan_addon(wsid: int, basedir: str):
 						raise subprocess.SubprocessError(comp.stderr)
 					names = [x for x in comp.stdout.strip().split('--##--') if x != '']
 					for name in names:
-						dbCursor.execute("INSERT OR REPLACE INTO vehicles VALUES (%s, %s)", (name, wsid,))
+						dbCursor.execute("INSERT IGNORE INTO vehicles VALUES (%s, %s)", (name, wsid,))
 				except subprocess.SubprocessError as err:
-					dbCursor.execute("INSERT OR REPLACE INTO errors VALUES (%s, %s, %s)", (p, str(err), wsid,))
+					dbCursor.execute("INSERT IGNORE INTO errors VALUES (%s, %s, %s)", (p, str(err), wsid,))
 
 
 def workshop_update_steampipe(wsid: int, addon: dict):
