@@ -71,9 +71,12 @@ where = ""
 
 
 def block(block: Union[int, str]):
+	print(f"blocking {block}")
 	if isinstance(block, int):
+		print("job id")
 		blocked_jobs.add(block)
 	else:
+		print("job type")
 		blocked_types.add(block)
 	blocks = list(blocked_jobs).append(list(blocked_types))
 
@@ -83,6 +86,7 @@ def block(block: Union[int, str]):
 	if len(blocked_types) != 0:
 		where.append(f"type NOT IN ({', '.join(['%s'] * len(blocked_types))})")
 	where = "" if len(where) == 0 else f"AND {' AND '.join(where)}"
+	print(f"rebuild query: {where}")
 
 
 def job():
