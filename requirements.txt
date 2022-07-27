@@ -10,6 +10,8 @@ certifi==2022.6.15
     # via requests
 cffi==1.15.1
     # via gevent
+chardet==5.0.0
+    # via -r requirements.in
 charset-normalizer==2.1.0
     # via requests
 discord-webhook==0.16.3

@@ -3,3 +3,4 @@ discord_webhook
 mysql-connector-python
 environs
 gevent-eventemitter
+chardet
