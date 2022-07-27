@@ -78,7 +78,8 @@ def block(block: Union[int, str]):
 	else:
 		print("job type")
 		blocked_types.add(block)
-	blocks = list(blocked_jobs).append(list(blocked_types))
+	blocks = list(blocked_jobs)
+	blocks.extend(blocked_types)
 
 	where = []
 	if len(blocked_jobs) != 0:
