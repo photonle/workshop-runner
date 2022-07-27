@@ -272,7 +272,7 @@ def scan():
 print("started")
 loop = True
 while loop:
-	loop = False
+	# loop = False
 	sleep(1)
 	nextJob = job()
 
