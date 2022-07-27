@@ -268,7 +268,9 @@ def scan():
 
 
 print("started")
-while True:
+loop = True
+while loop:
+	loop = False
 	sleep(1)
 	nextJob = job()
 
