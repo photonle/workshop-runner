@@ -91,7 +91,11 @@ local function clone_env(env)
 
     for k, v in pairs(env) do
         if type(v) == "table" then
-            out[k] = clone_env(v)
+            if k == "_M" then
+                out[k] = out
+            else
+                out[k] = clone_env(v)
+            end
         else
             out[k] = v
         end
