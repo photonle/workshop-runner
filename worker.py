@@ -1,8 +1,8 @@
 from steam.monkey import patch_minimal
+patch_minimal()
 
 from runner.jobs import JobManager
-
-patch_minimal()
+from runner.jobs.RunnerJob import RunnerJob
 
 import logging
 import datetime
@@ -72,7 +72,7 @@ blocked_types = set()
 blocks = []
 where = ""
 
-manager = JobManager(dbConnection)
+manager = JobManager(dbConnection, RunnerJob)
 
 
 def block(block: Union[int, str]):
@@ -120,17 +120,17 @@ def done(jobId: int):
 	dbCursor.execute("UPDATE jobs SET status = 'done' WHERE id = %s;", (jobId,))
 
 
-def author(communityId: int):
-	logging.debug("Updating author %s", communityId)
-	dbCursor.execute("SELECT NOW() > DATE_ADD(updated_at, INTERVAL 14 DAY) AS outdated FROM authors WHERE sid = %s;", (communityId,))
+def author(community_id: int):
+	logging.debug("Updating author %s", community_id)
+	dbCursor.execute("SELECT NOW() > DATE_ADD(updated_at, INTERVAL 14 DAY) AS outdated FROM authors WHERE sid = %s;", (community_id,))
 	outdated = dbCursor.fetchone()
 	outdated = True if outdated is None else outdated[0] == 1
 
 	if not outdated:
 		return
 
-	author = workshop.author(communityId)
-	dbCursor.execute("INSERT INTO authors (sid, name) VALUES (%s, %s) ON DUPLICATE KEY UPDATE name = %s, updated_at = NOW();", (communityId, author, author))
+	author = workshop.author(community_id)
+	dbCursor.execute("INSERT INTO authors (sid, name) VALUES (%s, %s) ON DUPLICATE KEY UPDATE name = %s, updated_at = NOW();", (community_id, author, author))
 	dbCursor.execute("COMMIT")
 
 
@@ -259,14 +259,6 @@ def workshop_update(wsid: int, forced: bool = False):
 	return queue("StatusMessage", f"{data.get('title', wsid)} has been succesfully updated.")
 
 
-def status_message(text: str):
-	DiscordWebhook(
-		url=env.str("DISCORD_WEBHOOK"),
-		username="Bot Update Worker",
-		content=text
-	).execute()
-
-
 def scan():
 	for data in workshop.search('[Photon]'):
 		if data['result'] == 1:
@@ -280,20 +272,21 @@ for job in manager.consume():
 	jobType = job.type
 	jobData = job.data
 
-	handled = True
-	failed = True
+	handled = False
+	failed = False
 
 	try:
-		if jobType == "UpdateAddon":
+		if job.handle():
+			handled = True
+		elif jobType == "UpdateAddon":
 			workshop_update(jobData)
-		elif jobType == "StatusMessage":
-			status_message(jobData)
 		elif jobType == "Scan":
 			scan()
 		else:
 			handled = False
 	except Exception as e:
 		logging.error(e)
+		logging.error(e.__traceback__)
 		failed = True
 		handled = False
 
@@ -305,6 +298,3 @@ for job in manager.consume():
 	else:
 		manager.block(jobType)
 		job.unlock()
-
-
-
