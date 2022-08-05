@@ -1,0 +1,16 @@
+sandbox.environment.EMVU = EMVU
+sandbox.environment.Photon = Photon
+sandbox.environment.list = list
+sandbox.environment.hook = hook
+sandbox.environment.concommand = concommand
+sandbox.environment.net = net
+sandbox.environment.resource = resource
+sandbox.environment.table.Copy = table.Copy
+sandbox.environment.AddCSLuaFile = AddCSLuaFile
+sandbox.environment.include = include
+sandbox.environment.CreateClientConVar = CreateClientConVar
+sandbox.environment.Vector = Vector
+sandbox.environment.Angle = Angle
+sandbox.environment.Color = Color
+sandbox.environment.CurTime = CurTime
+sandbox.environment.print = function() end
