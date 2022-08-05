@@ -160,7 +160,7 @@ def workshop_scan_addon(wsid: int, basedir: str):
 					comp = subprocess.run(['lua', 'cars.lua', pf], capture_output=True, text=True)
 					if comp.returncode != 0:
 						raise subprocess.SubprocessError(comp.stderr)
-					names = [x for x in comp.stdout.strip().split('--##--') if x != '']
+					names = [x for x in comp.stdout.strip().split("\n") if x != '']
 					for name in names:
 						dbCursor.execute("INSERT IGNORE INTO vehicles VALUES (%s, %s)", (name, wsid,))
 				except subprocess.SubprocessError as err:
