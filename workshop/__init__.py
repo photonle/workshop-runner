@@ -1,8 +1,10 @@
 """A module for interactions with the Steam Workshop."""
 
 from os import rename
+from typing import Optional
+
 from environs import Env
-from requests import get, post
+from requests import get, post, JSONDecodeError
 from lzma import LZMADecompressor
 from json import dumps
 from os.path import exists
@@ -84,7 +86,7 @@ def download(url, fi):
     rename(fi + ".tmp", fi)
 
 
-def author(sid):
+def author(sid) -> Optional[str]:
     resp = get(url="https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/", params={
         "key": key,
         "steamids": sid
@@ -92,9 +94,12 @@ def author(sid):
 
     try:
         resp = resp.json()['response']
-    except Exception:
+    except JSONDecodeError:
+        return None
+    except Exception as e:
+        print(resp.status_code)
         print(resp.headers)
         print(resp.text)
-        exit()
+        return None
 
     return resp['players'][0]['personaname']
