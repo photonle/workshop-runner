@@ -284,8 +284,10 @@ for job in manager.consume():
 			handled = True
 		elif jobType == "UpdateAddon":
 			workshop_update(jobData)
+			handled = True
 		elif jobType == "Scan":
 			scan()
+			handled = True
 		else:
 			handled = False
 	except Exception as e:
