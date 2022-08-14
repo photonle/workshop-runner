@@ -129,9 +129,13 @@ def author(community_id: int):
 	if not outdated:
 		return
 
-	author = workshop.author(community_id)
-	dbCursor.execute("INSERT INTO authors (sid, name) VALUES (%s, %s) ON DUPLICATE KEY UPDATE name = %s, updated_at = NOW();", (community_id, author, author))
-	dbCursor.execute("COMMIT")
+	try:
+		author = workshop.author(community_id)
+		if author is not None:
+			dbCursor.execute("INSERT INTO authors (sid, name) VALUES (%s, %s) ON DUPLICATE KEY UPDATE name = %s, updated_at = NOW();", (community_id, author, author))
+			dbCursor.execute("COMMIT")
+	except Exception as e:
+		logging.warning(e)
 
 
 def workshop_scan_addon(wsid: int, basedir: str):
